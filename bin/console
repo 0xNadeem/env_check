@@ -1,0 +1,44 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "bundler/setup"
+require "env_check"
+
+# Load development environment if available
+if File.exist?(".env")
+  require "dotenv"
+  Dotenv.load
+end
+
+# You can add fixtures and/or initialization code here to make experimenting
+# with your gem easier. You can also use a different console, if you like.
+
+puts "🔍 EnvCheck Console v#{EnvCheck::VERSION}"
+puts "Available methods:"
+puts "  EnvCheck.verify         # Verify default config"
+puts "  EnvCheck.verify!        # Verify with exception on failure"
+puts "  EnvCheck.verify(file)   # Verify custom config file"
+puts ""
+
+# Set up some useful variables for console testing
+config_path = EnvCheck::Config.discover_config_path
+if File.exist?(config_path)
+  puts "📁 Found #{config_path}"
+  config_result = begin
+    EnvCheck.verify
+  rescue StandardError
+    nil
+  end
+  if config_result
+    puts "✅ Config loaded successfully"
+  else
+    puts "⚠️  Config has issues"
+  end
+else
+  puts "📝 No config file found. Run EnvCheck init first."
+end
+
+puts ""
+
+require "irb"
+IRB.start(__FILE__)

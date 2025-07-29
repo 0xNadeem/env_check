@@ -1,0 +1,30 @@
+/.bundle/
+/.yardoc
+/_yardoc/
+/coverage/
+/doc/
+/pkg/
+/spec/reports/
+/tmp/
+
+# Environment variables (NEVER commit - contains secrets)
+.env
+.env.local
+.env.*.local
+
+# Configuration files (COMMIT - documents required variables)
+# .env_check.yml and config/env_check.yml should be committed
+# They contain templates/schemas, not actual secrets
+
+# rspec failure tracking
+.rspec_status
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
