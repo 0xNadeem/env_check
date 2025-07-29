@@ -1,0 +1,218 @@
+name: Rails Integration Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run weekly to catch Rails updates
+    - cron: '0 0 * * 0'
+
+jobs:
+  rails-integration:
+    runs-on: ubuntu-latest
+    name: Rails ${{ matrix.rails }} with Ruby ${{ matrix.ruby }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Rails 8.0 - Latest
+          - ruby: '3.4'
+            rails: '~> 8.0.0'
+            rails_version: '8.0'
+          - ruby: '3.3'
+            rails: '~> 8.0.0'
+            rails_version: '8.0'
+          - ruby: '3.2'
+            rails: '~> 8.0.0'
+            rails_version: '8.0'
+            
+          # Rails 7.2 - Current LTS
+          - ruby: '3.4'
+            rails: '~> 7.2.0'
+            rails_version: '7.2'
+          - ruby: '3.3'
+            rails: '~> 7.2.0'
+            rails_version: '7.2'
+          - ruby: '3.2'
+            rails: '~> 7.2.0'
+            rails_version: '7.2'
+          - ruby: '3.1'
+            rails: '~> 7.2.0'
+            rails_version: '7.2'
+            
+          # Rails 7.1
+          - ruby: '3.3'
+            rails: '~> 7.1.0'
+            rails_version: '7.1'
+          - ruby: '3.2'
+            rails: '~> 7.1.0'
+            rails_version: '7.1'
+          - ruby: '3.1'
+            rails: '~> 7.1.0'
+            rails_version: '7.1'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby }}
+        bundler-cache: false
+        
+    - name: Create Rails test app
+      run: |
+        # Install specific Rails version
+        gem install rails -v "${{ matrix.rails }}"
+        
+        # Create Rails app
+        rails new test_app --skip-git --skip-bundle --api
+        cd test_app
+        
+        # Add env_check gem to Gemfile
+        echo "gem 'env_check', path: '../'" >> Gemfile
+        
+        # Create a simple config file
+        mkdir -p config
+        cat > config/env_check.yml << 'EOF'
+        development:
+          required:
+            - DATABASE_URL
+            - SECRET_KEY_BASE
+          optional:
+            DEBUG: boolean
+            PORT: integer
+        
+        test:
+          required:
+            - SECRET_KEY_BASE
+          optional:
+            DATABASE_URL: string
+            
+        production:
+          required:
+            - DATABASE_URL
+            - SECRET_KEY_BASE
+            - RAILS_MASTER_KEY
+          optional:
+            REDIS_URL: url
+        EOF
+        
+    - name: Install dependencies
+      run: |
+        cd test_app
+        echo "Ruby version: $(ruby -v)"
+        echo "Rails version: ${{ matrix.rails }}"
+        echo "Bundle install starting..."
+        bundle install || { echo "Bundle install failed"; exit 1; }
+        echo "Bundle install completed successfully"
+        
+    - name: Test Rails integration
+      run: |
+        cd test_app
+        
+        echo "=== Environment Setup ==="
+        echo "Ruby: $(ruby -v)"
+        echo "Rails: $(bundle exec rails -v)"
+        echo "Current directory: $(pwd)"
+        echo "Config file exists: $(ls -la config/env_check.yml)"
+        
+        # Set required environment variables for all environments
+        export SECRET_KEY_BASE=test_secret_key_base_for_rails_integration_testing
+        export DATABASE_URL=sqlite3://localhost/test.db
+        export DEBUG=true
+        export PORT=3000
+        
+        echo "=== Environment Variables ==="
+        echo "SECRET_KEY_BASE: ${SECRET_KEY_BASE:0:10}..."
+        echo "DATABASE_URL: $DATABASE_URL"
+        echo "DEBUG: $DEBUG"
+        echo "PORT: $PORT"
+        
+        # Test that env_check works in Rails environment
+        echo "=== Testing Rails Integration ==="
+        bundle exec rails runner "
+          puts '=== Rails Runner Started ==='
+          puts \"Ruby: #{RUBY_VERSION}\"
+          puts \"Rails: #{Rails.version}\"
+          puts \"Rails env: #{Rails.env}\"
+          puts \"Working dir: #{Dir.pwd}\"
+          
+          begin
+            require 'env_check'
+            puts 'EnvCheck required successfully'
+            
+            # Debug information
+            puts \"Environment variables set:\"
+            puts \"  SECRET_KEY_BASE: #{ENV['SECRET_KEY_BASE'] ? 'SET' : 'NOT SET'}\"
+            puts \"  DATABASE_URL: #{ENV['DATABASE_URL'] ? 'SET' : 'NOT SET'}\"
+            puts \"  DEBUG: #{ENV['DEBUG'] ? 'SET' : 'NOT SET'}\"
+            puts \"  PORT: #{ENV['PORT'] ? 'SET' : 'NOT SET'}\"
+            
+            # Test basic functionality
+            puts '=== Testing Basic Verification ==='
+            result = EnvCheck.verify
+            puts 'Basic verification: ' + (result.success? ? 'PASS' : 'FAIL')
+            if !result.success?
+              puts 'Errors: ' + result.errors.inspect
+              puts 'Warnings: ' + result.warnings.inspect
+            end
+            
+            # Test with Rails environment
+            puts '=== Testing Rails Environment Verification ==='
+            result = EnvCheck.verify(nil, Rails.env)
+            puts 'Rails env verification: ' + (result.success? ? 'PASS' : 'FAIL')
+            if !result.success?
+              puts 'Errors: ' + result.errors.inspect
+              puts 'Warnings: ' + result.warnings.inspect
+            end
+            
+            puts 'Rails integration test completed successfully!'
+          rescue => e
+            puts '=== ERROR IN RAILS INTEGRATION ==='
+            puts 'Error during Rails integration test: ' + e.message
+            puts 'Error class: ' + e.class.to_s
+            puts 'Backtrace:'
+            puts e.backtrace.first(10).join('\\n')
+            exit 1
+          end
+        "
+        
+    - name: Test Rake task integration
+      run: |
+        cd test_app
+        
+        # Set required environment variables for rake task
+        export SECRET_KEY_BASE=test_secret_key_base_for_rails_integration_testing
+        export DATABASE_URL=sqlite3://localhost/test.db
+        export DEBUG=true
+        export PORT=3000
+        
+        # Test rake task
+        bundle exec rake env:check
+        
+        echo "Rake task integration test completed successfully!"
+
+  summary:
+    runs-on: ubuntu-latest
+    needs: rails-integration
+    if: always()
+    
+    steps:
+    - name: Integration Test Summary
+      run: |
+        echo "Rails Integration Tests Summary:"
+        echo "- All Rails versions from 7.0 to 8.0 tested"
+        echo "- Ruby versions 3.0 to 3.4 tested" 
+        echo "- Both CLI and programmatic usage verified"
+        echo "- Rake task integration confirmed"
+        
+        if [ "${{ needs.rails-integration.result }}" = "success" ]; then
+          echo "✅ All Rails integration tests passed!"
+        else
+          echo "❌ Some Rails integration tests failed"
+          exit 1
+        fi

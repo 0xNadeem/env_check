@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+set -vx
+
+echo "🔧 Setting up env_check development environment..."
+
+# Install dependencies
+bundle install
+
+# Run any other automated setup that you need to do here
+echo "✅ Running initial tests to verify setup..."
+bundle exec rspec --format documentation
+
+echo "🎯 Running RuboCop to check code style..."
+bundle exec rubocop
+
+echo ""
+echo "🎉 Setup complete!"
+echo ""
+echo "Available commands:"
+echo "  ./bin/console     # Start interactive console"
+echo "  ./bin/env_check   # Run CLI tool"
+echo "  bundle exec rspec # Run tests"
+echo "  bundle exec rubocop # Check code style"
+echo ""

@@ -1,0 +1,99 @@
+name: Ruby Gem CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    name: Ruby ${{ matrix.ruby }} on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.0'
+          - '3.1'
+          - '3.2'
+          - '3.3'
+          - '3.4'
+        os:
+          - ubuntu-latest
+        include:
+          # Test on macOS with latest stable Ruby
+          - ruby: '3.4'
+            os: macos-latest
+          # Test on Windows with latest stable Ruby  
+          - ruby: '3.4'
+            os: windows-latest
+      max-parallel: 4
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby }}
+        bundler-cache: true
+        
+    - name: Create test config directory
+      run: mkdir -p config
+      
+    - name: Set test environment variables (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        echo "DATABASE_URL=postgres://localhost/test" >> $GITHUB_ENV
+        echo "SECRET_KEY_BASE=test_secret_key" >> $GITHUB_ENV
+        echo "DEBUG=true" >> $GITHUB_ENV
+        echo "PORT=3000" >> $GITHUB_ENV
+        
+    - name: Set test environment variables (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        echo "DATABASE_URL=postgres://localhost/test" >> $env:GITHUB_ENV
+        echo "SECRET_KEY_BASE=test_secret_key" >> $env:GITHUB_ENV
+        echo "DEBUG=true" >> $env:GITHUB_ENV
+        echo "PORT=3000" >> $env:GITHUB_ENV
+        
+    - name: Run tests
+      run: bundle exec rspec
+      
+    - name: Run RuboCop
+      run: bundle exec rubocop
+      
+    - name: Test CLI commands (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        ./bin/env_check version
+        ./bin/env_check init
+        ./bin/env_check check
+        
+    - name: Test CLI commands (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        ruby bin/env_check version
+        ruby bin/env_check init
+        ruby bin/env_check check
+
+  security:
+    runs-on: ubuntu-latest
+    name: Security Scan
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4'
+        bundler-cache: true
+        
+    - name: Run bundle audit
+      run: |
+        gem install bundler-audit
+        bundle audit --update
