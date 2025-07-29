@@ -15,6 +15,7 @@ require "yaml"
 require_relative "env_check/version"
 require_relative "env_check/config"
 require_relative "env_check/validators"
+require_relative "env_check/cli"
 require_relative "env_check/rake_task" if defined?(Rake)
 
 # Load .env automatically (if present)
