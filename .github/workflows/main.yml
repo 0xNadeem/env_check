@@ -1,5 +1,6 @@
 name: Ruby Gem CI
 
+# Comprehensive CI workflow for env_check gem
 on:
   push:
     branches: [ main ]
@@ -38,7 +39,12 @@ jobs:
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby }}
-        bundler-cache: true
+        bundler-cache: false  # Disable cache to ensure fresh install
+        
+    - name: Install dependencies
+      run: |
+        gem install bundler
+        bundle install
         
     - name: Create test config directory
       run: mkdir -p config
@@ -68,16 +74,25 @@ jobs:
     - name: Test CLI commands (Unix)
       if: runner.os != 'Windows'
       run: |
-        ./bin/env_check version
-        ./bin/env_check init
-        ./bin/env_check check
+        echo "Testing CLI commands..."
+        which ruby
+        which bundle
+        ls -la bin/env_check
+        bundle exec ruby --version
+        bundle exec ruby bin/env_check version
+        bundle exec ruby bin/env_check init
+        bundle exec ruby bin/env_check check
         
     - name: Test CLI commands (Windows)
       if: runner.os == 'Windows'
       run: |
-        ruby bin/env_check version
-        ruby bin/env_check init
-        ruby bin/env_check check
+        echo "Testing CLI commands on Windows..."
+        where ruby
+        where bundle
+        bundle exec ruby --version
+        bundle exec ruby bin/env_check version
+        bundle exec ruby bin/env_check init
+        bundle exec ruby bin/env_check check
 
   security:
     runs-on: ubuntu-latest
@@ -91,9 +106,15 @@ jobs:
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: '3.4'
-        bundler-cache: true
+        bundler-cache: false  # Disable cache to ensure fresh install
+        
+    - name: Install dependencies
+      run: |
+        gem install bundler
+        bundle install
         
     - name: Run bundle audit
       run: |
-        gem install bundler-audit
-        bundle audit --update
+        echo "Running security scan..."
+        bundle exec bundler-audit version
+        bundle exec bundler-audit check --update

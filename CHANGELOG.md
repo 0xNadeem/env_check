@@ -6,6 +6,29 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
+## [0.1.2] - 2025-07-29
+
+### Fixed
+
+- 🐛 **CLI Architecture Redesign** - Completely fixed `bundle exec env_check` compatibility
+  - Moved CLI logic from executable to `lib/env_check/cli.rb` as `EnvCheck::CLI` class
+  - Simplified executable to just load gem and call CLI class
+  - Fixed shebang line and file corruption issues
+  - Now works reliably with both `bundle exec` and direct gem installation
+
+---
+
+## [0.1.1] - 2025-07-29
+
+### Fixed
+
+- 🐛 **CLI Executable Loading** - Fixed `bundle exec env_check` command not working properly
+  - Improved require statement to work in both development and installed gem environments
+  - Added fallback loading mechanism for better compatibility
+  - Executable now works correctly with bundler in Rails applications
+
+---
+
 ## [0.1.0] - 2025-01-29
 
 ### Added

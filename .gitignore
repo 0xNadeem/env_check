@@ -7,6 +7,9 @@
 /spec/reports/
 /tmp/
 
+# Built gems
+*.gem
+
 # Environment variables (NEVER commit - contains secrets)
 .env
 .env.local
@@ -28,3 +31,8 @@
 # OS files
 .DS_Store
 Thumbs.db
+
+# Temporary files and directories
+README_new.md
+exe/
+test_local_rails/
